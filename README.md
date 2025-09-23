@@ -6,8 +6,8 @@
 > For a version of `realm-dart` without sync features, install version 20 or see the `community` branch.
 
 <picture>
-    <source srcset="./media/logo-dark.svg" media="(prefers-color-scheme: dark)" alt="realm by MongoDB">
-    <img src="./media/logo.svg" alt="realm by MongoDB">
+    <source srcset="./media/logo-dark.svg" media="(prefers-color-scheme: dark)" alt="realm">
+    <img src="./media/logo.svg" alt="realm">
 </picture>
 
 [![License](https://img.shields.io/badge/License-Apache-blue.svg)](LICENSE)
@@ -23,7 +23,6 @@ This repository holds the source code for the Realm SDK for Flutter™ and Dart�
 * **Simple:** Realm’s object-oriented data model is simple to learn, doesn’t need an ORM, and the [API](https://pub.dev/documentation/realm/latest/) lets you write less code to get apps up & running in minutes.
 * **Modern:** Realm supports latest Dart and Flutter versions and is built with sound null-safety.
 * **Fast:** Realm is faster than even raw SQLite on common operations while maintaining an extremely rich feature set.
-* **[MongoDB Atlas Device Sync](https://www.mongodb.com/docs/atlas/app-services/sync/)**: Makes it simple to keep data in sync across users, devices, and your backend in real-time. Get started for free with [a template application](https://github.com/mongodb/template-app-dart-flutter-todo) and [create the cloud backend](https://mongodb.com/realm/register?utm_medium=github_atlas_CTA&utm_source=realm_dart_github).
 
 ## Getting Started
 
@@ -97,14 +96,10 @@ For API documentation go to
 
 Use [realm](https://pub.dev/packages/realm) package for Flutter and [realm_dart](https://pub.dev/packages/realm_dart) package for Dart applications.
 
-For complete documentation of the SDKs, go to the [Realm SDK documentation](https://www.mongodb.com/docs/atlas/device-sdks/sdk/flutter/).
+For complete documentation of the SDKs, refer to the
+[docs/guides](docs/README.md).
 
-If you are using the Realm SDK for the first time, refer to the [Quick Start documentation](https://www.mongodb.com/docs/realm/sdk/flutter/quick-start/).
-
-To learn more about using Realm with Atlas App Services and Device Sync, refer to the following Realm SDK documentation:
-
-- [App Services Overview](https://www.mongodb.com/docs/realm/sdk/flutter/app-services/)
-- [Device Sync Overview](https://www.mongodb.com/docs/realm/sdk/flutter/sync/)
+If you are using the Realm SDK for the first time, refer to the [Quick Start documentation](docs/guides/quick-start.md).
 
 # Realm Flutter SDK
 
@@ -139,7 +134,7 @@ Realm Flutter package is published to [realm](https://pub.dev/packages/realm).
     import 'package:realm/realm.dart';
     ```
 
-* Declare a part file `catalog.realm.dart` in the begining of the `catalog.dart` dart file after all imports.
+* Declare a part file `catalog.realm.dart` in the beginning of the `catalog.dart` dart file after all imports.
 
     ```dart
     import 'dart:io';
@@ -180,7 +175,7 @@ Realm Flutter package is published to [realm](https://pub.dev/packages/realm).
     // Create a Configuration object
     var config = Configuration.local([Item.schema]);
 
-    // Opean a Realm
+    // Open a Realm
     var realm = Realm(config);
 
     var myItem = Item(0, 'Pen', price: 4);
@@ -327,53 +322,6 @@ Realm Dart package is published to [realm_dart](https://pub.dev/packages/realm_d
     _*The generated file should be committed to source control_
 
 * The usage of the Realm Dart SDK is the same like the Realm Flutter above.
-
-# Sync data with Realm Flutter and Dart using Device Sync
-
-This section is about how to use the Realm with [Device Sync](https://www.mongodb.com/docs/realm/sdk/flutter/sync/) and how to connect to [Atlas App Services](https://www.mongodb.com/docs/realm/sdk/flutter/app-services/).
-
-### I. Set up Atlas App Services
-  1. Create an account on [cloud.mongodb.com](https://cloud.mongodb.com). Follow the instructions: [Register a new Atlas Account](https://www.mongodb.com/docs/atlas/tutorial/create-atlas-account/#register-a-new-service-account).
-  1. Create a new App following the instructions here: [Create an App with Atlas App Services UI](https://www.mongodb.com/docs/atlas/app-services/manage-apps/create/create-with-realm-ui).
-  1. Read [Authentication Providers](https://www.mongodb.com/docs/atlas/app-services/authentication/providers/) to see how to configure the appropriate authentication provider type.
-  1. Go to the **Device Sync** menu and [Enable Flexible Sync](https://www.mongodb.com/docs/atlas/app-services/sync/configure/enable-sync/#enable-flexible-sync).
-  1. [Find and Copy the App ID](https://www.mongodb.com/docs/atlas/app-services/reference/find-your-project-or-app-id/) of your new application.
-
-### II. Use Device Sync with the Realm
-
-1. Initialize the App Services `App` client and authenticate a user.
-
-   ``` dart
-   String appId = "<Atlas App ID>";
-   final appConfig = AppConfiguration(appId);
-   final app = App(appConfig);
-   final user = await app.logIn(Credentials.anonymous());
-   ```
-1. Open a synced realm.
-
-   ``` dart
-   final config = Configuration.flexibleSync(user, [Task.schema]);
-   final realm = Realm(config);
-   ```
-
-1. Add a sync subscription and write data.
-
-   Only data matching the query in the subscription will be synced to the server and only data matching the subscription will be downloaded to the local device realm file.
-
-   ``` dart
-   realm.subscriptions.update((mutableSubscriptions) {
-   mutableSubscriptions.add(realm.query<Task>(r'status == $0 AND progressMinutes == $1', ["completed", 100]));
-   });
-   await realm.subscriptions.waitForSynchronization();
-   realm.write(() {
-     realm.add(Task(ObjectId(), "Send an email", "completed", 4));
-     realm.add(Task(ObjectId(), "Create a meeting", "completed", 100));
-     realm.add(Task(ObjectId(), "Call the manager", "init", 2));
-   });
-   realm.close();
-   ```
-
-To learn more about how to sync data with Realm using Device Sync, refer to the [Quick Start with Sync documentation](https://www.mongodb.com/docs/realm/sdk/flutter/quick-start/#sync-realm-with-mongodb-atlas).
 
 # Building the source
 
