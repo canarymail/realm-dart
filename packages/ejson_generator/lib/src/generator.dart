@@ -52,7 +52,7 @@ class EJsonGenerator extends Generator {
       if (annotatedCtors.isEmpty) {
         // class is directly annotated, and no constructors are annotated.
         final annotation = getEJsonAnnotation(cls);
-        if (annotation.decoder != null && annotation.encoder != null) {
+        if (!annotation.getField('decoder')!.isNull && !annotation.getField('encoder')!.isNull) {
           return ''; // class has custom defined encoder and decoder
         }
         if (cls.constructors.length > 1) {
@@ -66,9 +66,9 @@ class EJsonGenerator extends Generator {
         EJsonError.noExplicitConstructor.raise();
       }
 
-      for (final p in ctor.parameters) {
+      for (final p in ctor.formalParameters) {
         // check that all ctor parameters have a getter with the same name and type
-        final getter = cls.getGetter(p.name);
+        final getter = cls.getGetter(p.name!);
         if (getter == null) {
           EJsonError.missingGetter.raise();
         }
@@ -82,14 +82,14 @@ class EJsonGenerator extends Generator {
       return '''
         EJsonValue _encode$className($className value) {
           return {
-            ${ctor.parameters.map((p) => "'${p.name}': value.${p.name}.toEJson()").join(',\n')}
+            ${ctor.formalParameters.map((p) => "'${p.name}': value.${p.name}.toEJson()").join(',\n')}
           };
         }
 
         $className _decode$className(EJsonValue ejson) {
           return switch (ejson) {
-              ${decodePattern(ctor.parameters)} => $className${ctor.name.isEmpty ? '' : '.${ctor.name}'}(
-              ${ctor.parameters.map((p) => "${p.isNamed ? '${p.name} : ' : ''}fromEJson(${p.name})").join(',\n')}
+              ${decodePattern(ctor.formalParameters)} => $className${_ctorSuffix(ctor)}(
+              ${ctor.formalParameters.map((p) => "${p.isNamed ? '${p.name} : ' : ''}fromEJson(${p.name})").join(',\n')}
             ),
             _ => raiseInvalidEJson(ejson),
           };
@@ -106,11 +106,20 @@ class EJsonGenerator extends Generator {
   }
 }
 
-String decodePattern(Iterable<ParameterElement> parameters) {
+/// Returns the constructor suffix for code generation.
+/// Unnamed constructors (name is null, empty, or 'new') get no suffix.
+/// Named constructors get a dot-separated suffix (e.g., '.named').
+String _ctorSuffix(ConstructorElement ctor) {
+  final name = ctor.name;
+  if (name == null || name.isEmpty || name == 'new') return '';
+  return '.$name';
+}
+
+String decodePattern(Iterable<FormalParameterElement> parameters) {
   if (parameters.isEmpty) {
     return 'Map m when m.isEmpty';
   }
   return '''{
-    ${parameters.map((p) => "'${p.name}': EJsonValue ${p.name}").join(',\n')} 
+    ${parameters.map((p) => "'${p.name}': EJsonValue ${p.name}").join(',\n')}
   }''';
 }

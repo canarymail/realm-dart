@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:ejson_annotation/ejson_annotation.dart';
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:source_gen/source_gen.dart';
 
-TypeChecker get typeChecker => TypeChecker.fromRuntime(EJson);
+const typeChecker = TypeChecker.fromUrl('package:ejson_annotation/ejson_annotation.dart#EJson');
 
-EJson getEJsonAnnotation(Element element) => typeChecker.firstAnnotationOfExact(element) as EJson;
+DartObject getEJsonAnnotation(Element element) => typeChecker.firstAnnotationOfExact(element)!;
 bool isEJsonAnnotated(Element element) => typeChecker.hasAnnotationOfExact(element);

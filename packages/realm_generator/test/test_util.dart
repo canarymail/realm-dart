@@ -24,6 +24,7 @@ void testCompile(
   dynamic matcher, {
   dynamic skip,
   void Function(LogRecord)? onLog,
+  bool verbose = false,
 }) {
   if (source is Iterable) {
     testCompileMany(description, source, matcher);
@@ -36,24 +37,29 @@ void testCompile(
 
   matcher = matcher is File ? matcher.readAsStringSync() : matcher;
   if (matcher is String) {
-    final source = _formatter.format(matcher);
+    final source = _stripFormatMarker(_formatter.format(matcher));
     matcher = completion(equals(source));
   }
   if (matcher is! Matcher) throw ArgumentError.value(matcher, 'matcher');
 
   test(description, () async {
     generate() async {
-      final writer = InMemoryAssetWriter();
-      await testBuilder(
+      final readerWriter = TestReaderWriter(rootPackage: 'pkg');
+      await readerWriter.testing.loadIsolateSources();
+      final result = await testBuilder(
         generateRealmObjects(),
         {'pkg|$assetName': '$source'},
-        writer: writer,
-        reader: await PackageAssetReader.currentIsolate(),
+        readerWriter: readerWriter,
         onLog: onLog,
+        flattenOutput: true,
+        verbose: verbose,
       );
-      return _formatter.format(
-        String.fromCharCodes(writer.assets.entries.single.value),
-      );
+      if (!result.succeeded) {
+        throw BuildError(result.errors.join('\n'));
+      }
+      return _stripFormatMarker(_formatter.format(
+        result.readerWriter.testing.readString(result.outputs.single),
+      ));
     }
 
     expect(generate(), matcher);
@@ -80,18 +86,19 @@ void testCompileMany(
   matcher = switch (matcher) {
     Matcher m => m,
     Iterable<String> strings => completion(
-        equals(strings.map((e) => _formatter.format(e))),
+        equals(strings.map((e) => _stripFormatMarker(_formatter.format(e)))),
       ),
     Iterable<File> files => completion(
-        equals(files.map((x) => _formatter.format(x.readAsStringSync()))),
+        equals(files.map((x) => _stripFormatMarker(_formatter.format(x.readAsStringSync())))),
       ),
     _ => throw ArgumentError.value(matcher, 'matcher'),
   };
 
   test(description, () {
     generate() async {
-      final writer = InMemoryAssetWriter();
-      await testBuilder(
+      final readerWriter = TestReaderWriter(rootPackage: 'pkg');
+      await readerWriter.testing.loadIsolateSources();
+      final result = await testBuilder(
         generateRealmObjects(),
         Map<String, Object>.fromEntries(
           inputs.map((x) {
@@ -99,11 +106,14 @@ void testCompileMany(
             return MapEntry(id, source);
           }),
         ),
-        writer: writer,
-        reader: await PackageAssetReader.currentIsolate(),
+        readerWriter: readerWriter,
+        flattenOutput: true,
       );
-      return writer.assets.values.map(
-        (charCodes) => String.fromCharCodes(charCodes),
+      if (!result.succeeded) {
+        throw Exception(result.errors.join('\n'));
+      }
+      return result.outputs.map(
+        (id) => _stripFormatMarker(result.readerWriter.testing.readString(id)),
       );
     }
 
@@ -111,8 +121,23 @@ void testCompileMany(
   });
 }
 
+/// Strips the `// dart format width=80` marker line inserted by DartFormatter
+/// to avoid comparing formatting artifacts.
+String _stripFormatMarker(String source) =>
+    source.replaceFirst(RegExp(r'// dart format width=\d+\n'), '');
+
 final _endOfLine = RegExp(r'\r\n?|\n');
 
 extension StringX on String {
   String normalizeLineEndings() => replaceAll(_endOfLine, '\n');
+}
+
+/// Error thrown when a build fails.
+/// Contains the rendered error messages from the build.
+class BuildError extends Error {
+  final String message;
+  BuildError(this.message);
+
+  @override
+  String toString() => message;
 }
