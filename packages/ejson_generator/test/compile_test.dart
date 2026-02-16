@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:build_test/build_test.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:ejson_generator/ejson_generator.dart';
-import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 import 'package:meta/meta.dart';
 import 'package:pub_semver/pub_semver.dart';
@@ -30,14 +29,20 @@ void testCompile(String description, dynamic source, dynamic matcher, {dynamic s
 
   test(description, () {
     generate() async {
-      final writer = InMemoryAssetWriter();
-      await testBuilder(
+      final readerWriter = TestReaderWriter(rootPackage: 'pkg');
+      await readerWriter.testing.loadIsolateSources();
+      final result = await testBuilder(
         getEJsonGenerator(),
         {'pkg|source.dart': source as Object},
-        writer: writer,
-        reader: await PackageAssetReader.currentIsolate(),
+        readerWriter: readerWriter,
+        flattenOutput: true,
       );
-      return _formatter.format(String.fromCharCodes(writer.assets.entries.single.value));
+      if (!result.succeeded) {
+        throw Exception(result.errors.join('\n'));
+      }
+      return _formatter.format(
+        result.readerWriter.testing.readString(result.outputs.single),
+      );
     }
 
     expect(generate(), matcher);
@@ -60,10 +65,10 @@ class TwoAnnotatedCtors {
   TwoAnnotatedCtors.named(this.i);
 }
 ''',
-      throwsA(isA<InvalidGenerationSourceError>().having(
-        (e) => e.message,
-        'message',
-        'Too many annotated constructors',
+      throwsA(isA<Exception>().having(
+        (e) => e.toString(),
+        'toString',
+        contains('Too many annotated constructors'),
       )),
     );
     testCompile(
@@ -78,7 +83,11 @@ class MissingGetter {
   MissingGetter(int i) : _i = i;
 }
 ''',
-      throwsA(isA<InvalidGenerationSourceError>()),
+      throwsA(isA<Exception>().having(
+        (e) => e.toString(),
+        'toString',
+        contains('Missing getter'),
+      )),
     );
 
     testCompile(
@@ -94,7 +103,11 @@ class MismatchingGetter {
   MismatchingGetter(int i) : _i = i;
 }
 ''',
-      throwsA(isA<InvalidGenerationSourceError>()),
+      throwsA(isA<Exception>().having(
+        (e) => e.toString(),
+        'toString',
+        contains('Mismatched getter type'),
+      )),
     );
   });
 

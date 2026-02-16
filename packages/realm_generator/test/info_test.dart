@@ -11,16 +11,27 @@ void main() async {
 
   await for (final infoFile in Directory(directory).list(recursive: true).where((f) => f.path.endsWith('.expected')).cast<File>()) {
     final sourceFile = File(infoFile.path.replaceFirst('.expected', '.dart'));
-    String? firstLog;
+    final expectedContent = infoFile.readAsStringSync().normalizeLineEndings();
+    String? capturedLog;
     testCompile(
       'log from compile $sourceFile',
       sourceFile,
       completion(predicate((_) {
-        return firstLog?.normalizeLineEndings() == infoFile.readAsStringSync().normalizeLineEndings();
+        return capturedLog != null;
       })),
+      verbose: true,
       onLog: (record) {
-        if (firstLog == null && record.loggerName == 'testBuilder') {
-          firstLog = '$record';
+        if (capturedLog != null) return;
+        // In build_test 3.5.0+, generator-level log.info() messages are prefixed
+        // with "Generating .realm.dart: RealmObjectGenerator on <file>:\n"
+        // Extract the generator's message content after the prefix.
+        final message = record.message;
+        final prefixEnd = message.indexOf('\n');
+        if (prefixEnd >= 0 && message.startsWith('Generating ')) {
+          final content = message.substring(prefixEnd + 1);
+          if (content.normalizeLineEndings() == expectedContent) {
+            capturedLog = content;
+          }
         }
       },
     );

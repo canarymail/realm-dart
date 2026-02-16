@@ -1,8 +1,6 @@
 // Copyright 2021 MongoDB, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import 'dart:typed_data';
-
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:realm_common/realm_common.dart';
@@ -12,11 +10,15 @@ import 'package:source_gen/source_gen.dart';
 import 'session.dart';
 import 'type_checkers.dart';
 
-extension DartTypeEx on DartType {
-  bool isExactly<T>() => TypeChecker.fromRuntime(T).isExactlyType(this);
-  bool isA<T>() => TypeChecker.fromRuntime(T).isAssignableFromType(this);
+const _uint8ListChecker = TypeChecker.fromUrl('dart:typed_data#Uint8List');
+const _dateTimeChecker = TypeChecker.fromUrl('dart:core#DateTime');
+const _decimal128Checker = TypeChecker.fromUrl('package:realm_common/src/realm_types.dart#Decimal128');
+const _objectIdChecker = TypeChecker.fromUrl('package:objectid/src/objectid/objectid.dart#ObjectId');
+const _uuidChecker = TypeChecker.fromUrl('package:sane_uuid/src/uuid_base.dart#Uuid');
+const _realmValueChecker = TypeChecker.fromUrl('package:realm_common/src/realm_types.dart#RealmValue');
 
-  bool get isRealmValue => const TypeChecker.fromRuntime(RealmValue).isAssignableFromType(this);
+extension DartTypeEx on DartType {
+  bool get isRealmValue => _realmValueChecker.isAssignableFromType(this);
   bool get isRealmCollection => realmCollectionType != RealmCollectionType.none;
   bool get isRealmSet => realmCollectionType == RealmCollectionType.set;
 
@@ -31,7 +33,7 @@ extension DartTypeEx on DartType {
   bool get isRealmModel => realmObjectType != null;
   bool isRealmModelOfType(ObjectType type) => realmObjectType == type;
 
-  bool get isUint8List => isExactly<Uint8List>();
+  bool get isUint8List => _uint8ListChecker.isExactlyType(this);
 
   bool get isNullable => session.typeSystem.isNullable(this);
   DartType get asNonNullable => session.typeSystem.promoteToNonNull(this);
@@ -63,13 +65,13 @@ extension DartTypeEx on DartType {
         final mapped = self.typeArguments.last.mappedType;
         if (self != mapped) {
           if (self.isDartCoreList) {
-            return PseudoType('RealmList<${mapped.getDisplayString(withNullability: true)}>');
+            return PseudoType('RealmList<${mapped.getDisplayString()}>');
           }
           if (self.isDartCoreSet) {
-            return PseudoType('RealmSet<${mapped.getDisplayString(withNullability: true)}>');
+            return PseudoType('RealmSet<${mapped.getDisplayString()}>');
           }
           if (self.isDartCoreMap) {
-            return PseudoType('RealmMap<${mapped.getDisplayString(withNullability: true)}>');
+            return PseudoType('RealmMap<${mapped.getDisplayString()}>');
           }
         }
       }
@@ -81,15 +83,17 @@ extension DartTypeEx on DartType {
         }
       }
     } else if (isRealmModel) {
+      // Get the type name without nullability suffix by using the non-nullable version
+      final baseName = asNonNullable.getDisplayString().replaceAll(session.prefix, '');
       return PseudoType(
-        getDisplayString(withNullability: false).replaceAll(session.prefix, ''),
+        baseName,
         nullabilitySuffix: nullabilitySuffix,
       );
     }
     return self;
   }
 
-  String get mappedName => mappedType.getDisplayString(withNullability: true);
+  String get mappedName => mappedType.getDisplayString();
 
   RealmPropertyType? get realmType => _realmType(true);
 
@@ -100,15 +104,15 @@ extension DartTypeEx on DartType {
     if (isDartCoreInt) return RealmPropertyType.int;
     if (isDartCoreBool) return RealmPropertyType.bool;
     if (isDartCoreString) return RealmPropertyType.string;
-    if (isExactly<Uint8List>()) return RealmPropertyType.binary;
+    if (_uint8ListChecker.isExactlyType(this)) return RealmPropertyType.binary;
     if (isRealmValue) return RealmPropertyType.mixed;
-    if (isExactly<DateTime>()) return RealmPropertyType.timestamp;
+    if (_dateTimeChecker.isExactlyType(this)) return RealmPropertyType.timestamp;
     if (isDartCoreNum || isDartCoreDouble) return RealmPropertyType.double;
-    if (isA<Decimal128>()) return RealmPropertyType.decimal128;
+    if (_decimal128Checker.isAssignableFromType(this)) return RealmPropertyType.decimal128;
     if (isRealmModel) return RealmPropertyType.object;
     if (isDartCoreIterable) return RealmPropertyType.linkingObjects;
-    if (isExactly<ObjectId>()) return RealmPropertyType.objectid;
-    if (isExactly<Uuid>()) return RealmPropertyType.uuid;
+    if (_objectIdChecker.isExactlyType(this)) return RealmPropertyType.objectid;
+    if (_uuidChecker.isExactlyType(this)) return RealmPropertyType.uuid;
 
     return null;
   }
