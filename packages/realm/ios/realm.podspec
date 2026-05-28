@@ -51,7 +51,12 @@ Pod::Spec.new do |s|
                                 #Use --debug to debug the install command on both prepare_command and script_phase below
                                 # See the comment above .realm_flutter_install_env.sh: the relative path here is resolved
                                 # from the dir CocoaPods chdir's into (this pod's real location), where the sidecar lives.
-  s.prepare_command           = "source \"./.realm_flutter_install_env.sh\" && cd \"$FLUTTER_APPLICATION_PATH\" && \"$FLUTTER_ROOT/bin/dart\" run realm install --target-os-type ios"
+                                # The leading guard removes the committed realm_dart.xcframework symlink when it is
+                                # dangling (which it is when realm is consumed as a git dependency: its target
+                                # ../../realm_dart/binary/ios/... does not exist in a fresh checkout). Without this,
+                                # `realm install` can't extract through the dangling symlink and pod install fails.
+                                # It is a no-op for the published package (no symlink) or after a prior install (real dir).
+  s.prepare_command           = "if [ -L realm_dart.xcframework ]; then rm -f realm_dart.xcframework; fi && source \"./.realm_flutter_install_env.sh\" && cd \"$FLUTTER_APPLICATION_PATH\" && \"$FLUTTER_ROOT/bin/dart\" run realm install --target-os-type ios"
   s.script_phases             = [
                                   { :name => 'Download Realm Flutter iOS Binaries',
                                   #Use --debug to debug the install command
