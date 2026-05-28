@@ -1,7 +1,7 @@
 ## vNext (TBD)
 
 ### Fixed
-* Use a relative path in the iOS and macOS podspec `prepare_command` instead of interpolating an absolute filesystem path. This prevents machine-specific paths from being embedded in `Pods/Local Podspecs/realm.podspec.json`, which previously caused unstable `SPEC CHECKSUMS` in `Podfile.lock` across developers. (Issue [#1887](https://github.com/realm/realm-dart/issues/1887))
+* Stopped embedding an absolute filesystem path in the iOS and macOS podspec `prepare_command`. The absolute path was baked into `Pods/Local Podspecs/realm.podspec.json`, which made `SPEC CHECKSUMS` in `Podfile.lock` differ between developers. The iOS podspec now writes the machine-specific path into a sidecar script referenced by a constant relative path, and the macOS podspec uses a relative path. (Issue [#1887](https://github.com/realm/realm-dart/issues/1887))
 
 ### Compatibility
 * Realm Studio: 15.0.0 or later.
