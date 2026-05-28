@@ -53,7 +53,10 @@ Pod::Spec.new do |s|
   s.pod_target_xcconfig       = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version             = '5.0'
   s.vendored_libraries        = "#{realmLibName}"
-  s.prepare_command           = "touch #{realmPackageDir}/librealm_dart.dylib" #librealm_dart.dylib is needed before the build is started
+  # prepare_command runs from the pod root (realmPackageDir), so use a relative path. Interpolating the
+  # absolute realmPackageDir would make Podfile.lock SPEC CHECKSUMS machine-dependent (see
+  # https://github.com/realm/realm-dart/issues/1887).
+  s.prepare_command           = "touch librealm_dart.dylib" #librealm_dart.dylib is needed before the build is started
   s.script_phases             = [
                                   { :name => 'Download Realm Flutter macOS Binaries',
                                     #Use --debug to debug the install command
